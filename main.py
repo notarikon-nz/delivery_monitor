@@ -72,12 +72,24 @@ class Config:
     log_level: str
     max_emails_per_check: int
     courier_apis: Dict[str, str]
+    email_search_query: Optional[str] = None
+    terminal_refresh_seconds: int = 30
+    max_display_parcels: int = 20
 
     @classmethod
     def from_yaml(cls, config_path: str) -> 'Config':
         """Load configuration from YAML file"""
         with open(config_path, 'r') as f:
             data = yaml.safe_load(f)
+        
+        # Handle optional fields with defaults
+        if 'email_search_query' not in data:
+            data['email_search_query'] = None
+        if 'terminal_refresh_seconds' not in data:
+            data['terminal_refresh_seconds'] = 30
+        if 'max_display_parcels' not in data:
+            data['max_display_parcels'] = 20
+            
         return cls(**data)
 
 
@@ -518,11 +530,14 @@ class ParcelTracker:
         """Check Gmail for new shipping emails"""
         logging.info("Checking for new shipping emails...")
         
-        # Search for shipping-related emails
-        query = (
-            'subject:(shipped OR tracking OR delivery OR "on its way" OR "out for delivery") '
-            'OR from:(amazon.com OR ups.com OR fedex.com OR usps.com OR dhl.com)'
-        )
+        # Use configurable search query or default
+        if self.config.email_search_query:
+            query = self.config.email_search_query
+        else:
+            query = (
+                'subject:(shipped OR tracking OR delivery OR "on its way" OR "out for delivery") '
+                'OR from:(amazon.com OR ups.com OR fedex.com OR usps.com OR dhl.com)'
+            )
         
         emails = self.gmail_client.search_emails(query, self.config.max_emails_per_check)
         
@@ -579,6 +594,9 @@ class ParcelTracker:
             print("No parcels currently being tracked.")
             return
         
+        # Limit display to configured maximum
+        display_parcels = parcels[:self.config.max_display_parcels]
+        
         # Clear screen
         import os
         os.system('clear' if os.name == 'posix' else 'cls')
@@ -593,13 +611,17 @@ class ParcelTracker:
         print(f"{'Tracking Number':<20} {'Company':<12} {'Courier':<8} {'Status':<15} {'ETA':<12}")
         print("-" * 80)
         
-        for parcel in parcels:
+        for parcel in display_parcels:
             eta_str = parcel.eta if parcel.eta else "TBD"
             print(f"{parcel.tracking_number:<20} {parcel.company:<12} "
                   f"{parcel.courier:<8} {parcel.status:<15} {eta_str:<12}")
         
         print("-" * 80)
-        print(f"Total parcels: {len(parcels)}")
+        print(f"Showing {len(display_parcels)} of {len(parcels)} parcels")
+        if len(parcels) > self.config.max_display_parcels:
+            print(f"(Limited to {self.config.max_display_parcels} parcels - see config to adjust)")
+        
+        print(f"Next refresh in {self.config.terminal_refresh_seconds} seconds (Ctrl+C to exit)")
     
     def run_update_loop(self):
         """Background thread for periodic updates"""
@@ -633,7 +655,7 @@ class ParcelTracker:
         try:
             while True:
                 self.display_parcels()
-                time.sleep(30)  # Refresh display every 30 seconds
+                time.sleep(self.config.terminal_refresh_seconds)
                 
         except KeyboardInterrupt:
             logging.info("Shutting down...")
