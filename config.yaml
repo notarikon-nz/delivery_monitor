@@ -1,0 +1,31 @@
+# Gmail API Configuration
+gmail_credentials_path: "credentials.json"  # Path to Gmail API credentials file
+gmail_token_path: "token.json"              # Path to store OAuth token
+email_address: "your-email@gmail.com"       # Your Gmail address
+
+# Monitoring Configuration
+check_interval_minutes: 15                  # How often to check for updates (minutes)
+max_emails_per_check: 50                    # Maximum emails to process per check
+
+# Database Configuration
+database_path: "parcels.db"                 # SQLite database file path
+
+# Logging Configuration
+log_level: "INFO"                           # Log level: DEBUG, INFO, WARNING, ERROR
+
+# Courier API Keys (optional - leave empty if not available)
+courier_apis:
+  fedex: ""                                 # FedEx API key
+  ups: ""                                   # UPS API key
+  usps: ""                                  # USPS API key
+  dhl: ""                                   # DHL API key
+
+# Email Search Configuration
+email_search_query: >
+  subject:(shipped OR tracking OR delivery OR "on its way" OR "out for delivery" OR "dispatched")
+  OR from:(amazon.com OR ups.com OR fedex.com OR usps.com OR dhl.com OR shopify.com OR ebay.com)
+  newer_than:7d
+
+# Display Configuration
+terminal_refresh_seconds: 30                # How often to refresh terminal display
+max_display_parcels: 20                     # Maximum parcels to show in terminal
