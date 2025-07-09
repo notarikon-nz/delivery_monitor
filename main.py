@@ -351,7 +351,17 @@ class GmailClient:
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.credentials_path, self.SCOPES)
-                creds = flow.run_local_server(port=0)
+                
+                try:
+                    # Try with fixed port first
+                    creds = flow.run_local_server(port=8080)
+                except OSError:
+                    # If port 8080 is busy, try 8081
+                    try:
+                        creds = flow.run_local_server(port=8081)
+                    except OSError:
+                        # If both ports are busy, let the system choose
+                        creds = flow.run_local_server(port=0)
             
             # Save credentials for next run
             with open(self.token_path, 'w') as token:
